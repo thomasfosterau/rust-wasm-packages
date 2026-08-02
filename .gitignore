@@ -1,0 +1,5 @@
+# Cargo build output and the wasm it produces.
+target/
+# Generated from src/lib.rs by scripts/build-wasm.ts on every install — never
+# committed, so the artifact cannot drift from the Rust source.
+src/wasm.generated.ts
