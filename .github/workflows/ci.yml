@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Every package here compiles a Rust crate to wasm. The generated
+      # `src/wasm.generated.ts` is not committed, so nothing — not even the
+      # type-check — works without a toolchain that can hit this target.
+      - name: Setup Rust with the wasm32 target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/*/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('packages/*/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          cache: true
+          run-install: false
+
+      - name: Install dependencies
+        run: vp install --no-frozen-lockfile
+
+      # Build first: it runs `build:wasm`, which emits the `wasm.generated.ts`
+      # that both the type-check and the tests import.
+      - name: Build
+        run: vp run -r build
+
+      - name: Check (format, lint, types)
+        run: vp check
+
+      - name: Test
+        run: vp run -r test

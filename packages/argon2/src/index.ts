@@ -1,23 +1,22 @@
 /**
  * @copyright Thomas Foster
  *
- * argon2id password hashing for the Cloudflare Workers runtime — an in-repo
+ * argon2id password hashing for the Cloudflare Workers runtime — a thin
  * wrapper over the RustCrypto `argon2` crate, compiled to
  * `wasm32-unknown-unknown` (see `src/lib.rs`).
  *
- * Consumed by `apps/auth`'s Better Auth instance through
- * `emailAndPassword.password.{hash,verify}`. The exported functions are
- * `Promise`-returning to match that contract; the computation underneath is
- * synchronous, which is what makes this viable on workerd — there is no async
- * task pool, and therefore no `Worker` for the runtime to refuse to spawn.
+ * The exported functions are `Promise`-returning, to drop straight into
+ * password-hashing contracts that expect async (Better Auth's
+ * `emailAndPassword.password.{hash,verify}`, for one). The computation
+ * underneath is synchronous, which is what makes this viable on workerd —
+ * there is no async task pool, and therefore no `Worker` for the runtime to
+ * refuse to spawn.
  *
  * The module compiles and instantiates the wasm once, at module scope. That is
  * startup work, not per-request: Workers permits synchronous
  * `WebAssembly.Module` construction during startup and forbids it inside a
  * request, so this must stay at the top level and must not be moved into a
  * lazy per-call path.
- *
- * See docs/decisions/password-hashing.md.
  *
  * @module argon2
  */

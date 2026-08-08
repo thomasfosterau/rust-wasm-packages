@@ -7,30 +7,53 @@ export default defineConfig({
       // src/wasm.generated.ts. Every task that reads the module depends on it,
       // so the artifact is always rebuilt from the Rust source and can never
       // drift from it — that is the trade for not committing the wasm.
+      //
+      // Uncached: cargo does its own incremental caching, and the emitted file
+      // is an input to everything below, so a stale cache hit here would be
+      // silently wrong.
       "build:wasm": { command: "tsx scripts/build-wasm.ts", cache: false },
-      check: {
-        command: "tsc -p tsconfig.json",
+      build: {
+        command: "vp pack",
         dependsOn: ["build:wasm"],
         cache: false,
       },
-      "test:unit": {
-        command: "vp test run tests",
+      test: {
+        command: "vp test run",
         dependsOn: ["build:wasm"],
         cache: false,
       },
       "test:coverage": {
-        command: "vp test run tests --coverage",
+        command: "vp test run --coverage",
         dependsOn: ["build:wasm"],
         cache: false,
       },
     },
   },
+
+  /**
+   * `vp pack` (tsdown) builds the publishable library.
+   *
+   * Deliberately **bundled** (not `unbundle`): the wasm arrives as a base64
+   * string constant in `src/wasm.generated.ts`, and inlining it into
+   * `dist/index.js` is what makes the published package self-contained — a
+   * consumer needs no Rust toolchain and no asset-resolution support.
+   *
+   * `platform: "neutral"` because the module touches neither Node nor the DOM;
+   * it wants only `WebAssembly` and `crypto.getRandomValues`, which workerd,
+   * Deno, browsers, and Node all provide.
+   */
+  pack: {
+    entry: ["src/index.ts"],
+    format: ["esm"],
+    platform: "neutral",
+    dts: true,
+    sourcemap: true,
+  },
+
+  /** `vp test` (Vitest) */
   test: {
     include: ["tests/**/*.test.ts"],
     testTimeout: 30_000,
-    ...(process.env.VITEST_MAX_WORKERS
-      ? { maxWorkers: Number(process.env.VITEST_MAX_WORKERS) }
-      : {}),
     coverage: {
       provider: "istanbul",
       reporter: ["text-summary", "json-summary"],

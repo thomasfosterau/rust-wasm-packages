@@ -1,0 +1,22 @@
+# pnpm workspace for the Rust-to-WebAssembly package family.
+#
+# Each package pairs a Rust crate (`src/lib.rs` + `Cargo.toml`) with a thin
+# TypeScript wrapper. The crate is compiled to `wasm32-unknown-unknown` and
+# embedded in the wrapper as a base64 string literal — see
+# `packages/argon2/scripts/build-wasm.ts` for why a string constant rather than
+# an asset import.
+#
+# Building therefore needs a Rust toolchain with the `wasm32-unknown-unknown`
+# target installed. `.github/workflows/ci.yml` sets that up; locally:
+#
+#   rustup target add wasm32-unknown-unknown
+packages:
+  - "packages/*"
+
+allowBuilds:
+  # Pulled in transitively by the Vite+ toolchain; needs its postinstall to
+  # fetch the native binary.
+  esbuild: true
+  # Only an optional perf accelerator for msgpackr (also transitive); the
+  # pure-JS fallback is used when it isn't built.
+  msgpackr-extract: false
