@@ -9,12 +9,15 @@ npm install @thomasfosterau/argon2
 ```ts
 import { hashPassword, verifyPassword } from "@thomasfosterau/argon2";
 
-const phc = await hashPassword("correct horse battery staple");
+const hash = await hashPassword("correct horse battery staple");
 // "$argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>"
 
-await verifyPassword(phc, "correct horse battery staple"); // true
-await verifyPassword(phc, "hunter2"); // false
+// `verifyPassword` takes a single object, not positional arguments.
+await verifyPassword({ hash, password: "correct horse battery staple" }); // true
+await verifyPassword({ hash, password: "hunter2" }); // false
 ```
+
+`verifyPassword` returns `false` — it never throws — for a malformed or foreign stored value (a legacy `pbkdf2-sha256$…` hash, say), so one bad row fails verification instead of failing the request. That is deliberate, but it means a **call with the wrong argument shape also returns `false` silently**, which looks identical to a wrong password. Destructure the object.
 
 No dependencies, and nothing to configure. The functions return `Promise`s so they drop into password-hashing contracts that expect async (Better Auth's `emailAndPassword.password.{hash,verify}`, for one), but the work underneath is synchronous.
 
