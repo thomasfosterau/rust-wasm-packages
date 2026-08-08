@@ -1,6 +1,6 @@
 {
   "name": "@thomasfosterau/argon2",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "argon2id password hashing for edge runtimes (Cloudflare Workers, Deno, browsers) — the RustCrypto argon2 crate compiled to WebAssembly, synchronous and dependency-free.",
   "keywords": [
     "argon2",
