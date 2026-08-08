@@ -35,10 +35,17 @@ via OIDC** — no long-lived `NPM_TOKEN`. The workflow already has
    > [granular access token](https://docs.npmjs.com/creating-and-viewing-access-tokens):
    >
    > ```sh
+   > # 1. Merge the open "Version Packages" PR first, so `main` carries the real
+   > #    version. A fresh clone of `main` is still at 0.0.0, and publishing
+   > #    that puts a placeholder 0.0.0 on the registry forever.
    > rustup target add wasm32-unknown-unknown
    > vp install
    > vp run -r build
-   > npm publish --access public -w @thomasfosterau/argon2
+   > ls -la packages/argon2/dist/index.js   # ~98 kB, not ~5 kB — see below
+   > # 2. `pnpm publish`, NOT `npm publish`: this is a pnpm workspace declared in
+   > #    pnpm-workspace.yaml, and npm's `-w` flag only reads a `workspaces`
+   > #    field in package.json, so `npm publish -w <name>` fails outright here.
+   > cd packages/argon2 && pnpm publish --access public --no-git-checks
    > ```
    >
    > Then add the trusted publisher and let OIDC handle every release after.
