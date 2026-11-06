@@ -17,7 +17,7 @@ via OIDC** — no long-lived `NPM_TOKEN`. The workflow already has
    _Settings → Actions → General → Workflow permissions →_ enable
    **"Allow GitHub Actions to create and approve pull requests."**
    Without this, the workflow runs `changeset version` and pushes the
-   `changeset-release/main` branch successfully, but fails at the final step
+   `changeset-release/trunk` branch successfully, but fails at the final step
    with `GitHub Actions is not permitted to create or approve pull requests`,
    so no "Version Packages" PR is opened.
 
@@ -35,8 +35,8 @@ via OIDC** — no long-lived `NPM_TOKEN`. The workflow already has
    > [granular access token](https://docs.npmjs.com/creating-and-viewing-access-tokens):
    >
    > ```sh
-   > # 1. Merge the open "Version Packages" PR first, so `main` carries the real
-   > #    version. A fresh clone of `main` is still at 0.0.0, and publishing
+   > # 1. Merge the open "Version Packages" PR first, so `trunk` carries the real
+   > #    version. A fresh clone of `trunk` is still at 0.0.0, and publishing
    > #    that puts a placeholder 0.0.0 on the registry forever.
    > rustup target add wasm32-unknown-unknown
    > vp install
@@ -69,10 +69,10 @@ that silently skipped `build:wasm` would be the small one.
    `vp run changeset` (pick the affected package(s) and a bump type). Preview
    what is pending with `vp exec changeset status`.
 
-2. **Version Packages PR (automatic).** On every push to `main`, the Release
+2. **Version Packages PR (automatic).** On every push to `trunk`, the Release
    workflow runs `vp run version` (`changeset version`): it consumes the pending
    changesets, bumps the affected `package.json` versions, and writes each
-   package's `CHANGELOG.md` on the `changeset-release/main` branch, then opens
+   package's `CHANGELOG.md` on the `changeset-release/trunk` branch, then opens
    (or updates) a **"Version Packages"** PR. Review it like any other PR.
 
 3. **Publish (automatic on merge).** Merging the "Version Packages" PR triggers
@@ -91,7 +91,7 @@ the latter, and nothing bumps the former automatically.
 ## Manual fallback
 
 If the workflow can't open the PR (e.g. setting #1 above is still off), the
-`changeset-release/main` branch is still pushed with the correct version bump —
+`changeset-release/trunk` branch is still pushed with the correct version bump —
 open the "Version Packages" PR from that branch by hand. You can also run the
 version step locally:
 

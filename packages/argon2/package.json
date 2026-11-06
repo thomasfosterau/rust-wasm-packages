@@ -15,7 +15,7 @@
     "wasm",
     "webassembly"
   ],
-  "homepage": "https://github.com/thomasfosterau/rust-wasm-packages/tree/main/packages/argon2#readme",
+  "homepage": "https://github.com/thomasfosterau/rust-wasm-packages/tree/trunk/packages/argon2#readme",
   "bugs": {
     "url": "https://github.com/thomasfosterau/rust-wasm-packages/issues"
   },
