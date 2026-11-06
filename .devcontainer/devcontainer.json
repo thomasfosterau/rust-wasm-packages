@@ -1,0 +1,27 @@
+{
+  "name": "rust-wasm-packages",
+  // The Vite+ base image: Node + pnpm + the vp CLI. The tag is the catalog's
+  // `vite-plus` pin (pnpm-workspace.yaml); move it in the same PR that bumps
+  // vite-plus, since Dependabot's devcontainers updates cover only the features.
+  "image": "ghcr.io/voidzero-dev/vite-plus:1.5.0",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers-extra/features/ripgrep:1": {},
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
+    "ghcr.io/devcontainer-community/devcontainer-features/jq:1": {},
+    // Every package compiles a Rust crate to wasm32-unknown-unknown, so nothing
+    // builds, type-checks or tests without it (CI runs the same rustup target).
+    "ghcr.io/devcontainers/features/rust:1": {
+      "targets": "wasm32-unknown-unknown"
+    }
+  },
+  // This repo has no SessionStart hook, so provisioning is the frozen install
+  // CI runs; `vp run -r build` then emits each package's src/wasm.generated.ts.
+  "postCreateCommand": "vp install --frozen-lockfile",
+  "customizations": {
+    "vscode": {
+      "extensions": ["Anthropic.claude-code", "oxc.oxc-vscode", "rust-lang.rust-analyzer"]
+    }
+  },
+  "workspaceFolder": "/workspaces/rust-wasm-packages"
+}
