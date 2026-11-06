@@ -11,13 +11,17 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    # The job that publishes runs in the protected `release` environment, so
+    # its OIDC token (and so npm trusted publishing) is gated by the
+    # environment's required reviewer. See docs/RELEASING.md.
+    environment: release
     permissions:
       contents: write
       pull-requests: write
       id-token: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # `changeset publish` builds every package first, and each build
       # compiles a Rust crate to wasm — the published `dist/` embeds it.
@@ -25,13 +29,13 @@ jobs:
         run: rustup target add wasm32-unknown-unknown
 
       - name: Setup Vite+
-        uses: voidzero-dev/setup-vp@v1
+        uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
           cache: true
           run-install: false
 
       - name: Install dependencies
-        run: vp install --no-frozen-lockfile
+        run: vp install --frozen-lockfile
 
       # npm Trusted Publishing (OIDC) requires npm >= 11.5. Upgrade so
       # `changeset publish` authenticates to npm via the `id-token` below
@@ -49,7 +53,7 @@ jobs:
 
       - name: Create Release Pull Request or Publish to npm
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
           version: vp run version
           # Run the release script via `npm run`, NOT `vp run`: npm forwards the
