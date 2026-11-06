@@ -27,7 +27,7 @@ via OIDC** — no long-lived `NPM_TOKEN`. The workflow already has
    - Organization or user: `thomasfosterau`
    - Repository: `rust-wasm-packages`
    - Workflow filename: `release.yml`
-   - Environment: _(leave blank — the workflow doesn't use one)_
+   - Environment: `release` (the publish job's GitHub environment; see 3)
 
    > **First publish of a brand-new package.** npm only lets you add a trusted
    > publisher to a package that **already exists**, so the very first publish
@@ -50,6 +50,14 @@ via OIDC** — no long-lived `NPM_TOKEN`. The workflow already has
    >
    > Then add the trusted publisher and let OIDC handle every release after.
    > (Tracked upstream in [npm/cli#8544](https://github.com/npm/cli/issues/8544).)
+
+3. **Create the protected `release` environment.**
+   _Settings → Environments → New environment_ named `release`, with at least
+   one **required reviewer**. The Release workflow's job runs in it
+   (`environment: release`), so nothing can mint the OIDC token npm trusts
+   without that approval. Create it **before** the workflow first runs with
+   the `environment:` key: GitHub otherwise creates `release` on first use
+   with no protection rules.
 
 ## The wasm is built at publish time
 
