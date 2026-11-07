@@ -1,27 +1,127 @@
 name: Release
 
+# Changesets release flow, split so that only publishing waits for approval.
+# On every push to `trunk`:
+#
+# - `select` (read-only) asks changesets/action/select-mode what the repo state
+#   calls for: `version` while unreleased changesets exist, `publish` once none
+#   remain and some package version is not on npm yet (`changeset
+#   publish-plan`), else `none`.
+# - `version` opens/updates the "Version Packages" PR. It holds a write-scoped
+#   token but no `id-token`, so it cannot publish, and runs outside the
+#   `release` environment, so it needs no approval.
+# - `publish` is the only job in the protected `release` environment and the
+#   only one with `id-token: write`: it builds the wasm, publishes to npm via
+#   OIDC trusted publishing and tags the release, after the owner approves it
+#   (once per release). See docs/RELEASING.md.
+#
+# changesets/action's README recommends its sub-actions over the combined
+# action for trusted publishing, "to tighten publish permissions"; they need
+# Changesets CLI v3. The version and publish sub-actions push through the
+# GitHub API, so no checkout keeps git credentials.
+
 on:
   push:
     branches:
       - trunk
 
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+# No permissions by default; each job opts into exactly what it needs.
+permissions: {}
 
 jobs:
-  release:
-    name: Release
+  select:
+    name: Select mode
+    # Never on forks (no environment, no trusted publisher binding), and never
+    # for Dependabot: the later jobs hold write-scoped tokens and `id-token`.
+    if: github.repository == 'thomasfosterau/rust-wasm-packages' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
-    # The job that publishes runs in the protected `release` environment, so
-    # its OIDC token (and so npm trusted publishing) is gated by the
-    # environment's required reviewer. See docs/RELEASING.md.
-    environment: release
+    timeout-minutes: 10
     permissions:
-      contents: write
-      pull-requests: write
-      id-token: write
+      contents: read
+    outputs:
+      mode: ${{ steps.mode.outputs.mode }}
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          cache: true
+          run-install: false
+
+      - name: Install dependencies
+        run: vp install --frozen-lockfile
+
+      # `version`, `publish` or `none`. For `publish` it reads the registry
+      # (no credentials needed) to find the versions not yet on npm.
+      - name: Select mode
+        id: mode
+        uses: changesets/action/select-mode@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+
+  version:
+    name: Version packages
+    needs: select
+    if: needs.select.outputs.mode == 'version'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # A newer push supersedes an older refresh of the version PR.
+    concurrency:
+      group: release-version-${{ github.ref }}
+      cancel-in-progress: true
+    permissions:
+      contents: write # commit the version changes to `changeset-release/trunk`
+      pull-requests: write # open/update the "Version Packages" PR
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          cache: true
+          run-install: false
+
+      - name: Install dependencies
+        run: vp install --frozen-lockfile
+
+      - name: Create or update the version PR
+        uses: changesets/action/version@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          script: vp run version
+          commit-message: "chore: version packages"
+          pr-title: "chore: version packages"
+
+  publish:
+    name: Publish to npm
+    needs: select
+    if: needs.select.outputs.mode == 'publish'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # One publish at a time; never cancel one that has started.
+    concurrency:
+      group: release-publish-${{ github.ref }}
+      cancel-in-progress: false
+    # The only job in the protected `release` environment, so its OIDC token
+    # (and so npm trusted publishing) is gated by the environment's required
+    # reviewer. See docs/RELEASING.md.
+    environment: release
+    permissions:
+      contents: write # push the release tags and create the GitHub releases
+      id-token: write # OIDC: prove this workflow's identity to npm (no token needed)
+    steps:
+      # The publish sub-action pushes tags through the GitHub API, so the
+      # checkout keeps no credentials.
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       # `changeset publish` builds every package first, and each build
       # compiles a Rust crate to wasm — the published `dist/` embeds it.
@@ -37,11 +137,12 @@ jobs:
       - name: Install dependencies
         run: vp install --frozen-lockfile
 
-      # npm Trusted Publishing (OIDC) requires npm >= 11.5. Upgrade so
-      # `changeset publish` authenticates to npm via the `id-token` below
-      # instead of a long-lived NPM_TOKEN.
+      # npm Trusted Publishing (OIDC) requires npm >= 11.5.1, newer than the
+      # npm Node bundles. Pinned to an exact, reviewed version rather than
+      # `@latest`, so a new npm never arrives unreviewed in the job that holds
+      # `id-token: write`. Bump it by hand; Dependabot does not see it.
       - name: Ensure npm supports OIDC trusted publishing
-        run: npm install -g npm@latest
+        run: npm install -g npm@11.20.0
 
       # This is a pnpm workspace (`packageManager: pnpm` + `workspace:^` deps),
       # so `changeset publish` shells out to `pnpm publish`. Vite+ uses pnpm
@@ -51,21 +152,20 @@ jobs:
       - name: Ensure pnpm is on PATH for changeset publish
         run: npm install -g pnpm@11.18.0
 
-      - name: Create Release Pull Request or Publish to npm
-        id: changesets
-        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+      # Run the release script via `npm run`, NOT `vp run`: npm forwards the
+      # ambient environment to child processes, whereas `vp run` does not
+      # propagate the `ACTIONS_ID_TOKEN_REQUEST_URL` / `_TOKEN` variables that
+      # npm needs for OIDC trusted publishing. Without them npm logs "oidc
+      # Skipped because incorrect permissions for id-token" and falls back to
+      # token auth, failing with ENEEDAUTH. The `release` script still builds
+      # with `vp` internally; only the runner changes. The sub-action parses
+      # the "New tag:" output of `changeset publish`, pushes the tags and
+      # creates the GitHub releases.
+      #
+      # No NPM_TOKEN: publishing authenticates via OIDC trusted publishing
+      # (the `id-token: write` permission above + a trusted publisher
+      # configured for each package on npmjs.com). See docs/RELEASING.md.
+      - name: Publish to npm
+        uses: changesets/action/publish@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
-          version: vp run version
-          # Run the release script via `npm run`, NOT `vp run`: npm forwards the
-          # ambient environment to child processes, whereas `vp run` does not
-          # propagate the `ACTIONS_ID_TOKEN_REQUEST_URL` / `_TOKEN` variables
-          # that npm needs for OIDC trusted publishing. Without them npm logs
-          # "oidc Skipped because incorrect permissions for id-token" and falls
-          # back to token auth, failing with ENEEDAUTH. The `release` script
-          # still builds with `vp` internally; only the runner changes.
-          publish: npm run release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # No NPM_TOKEN: publishing authenticates via OIDC trusted publishing
-          # (the `id-token: write` permission above + a trusted publisher
-          # configured for each package on npmjs.com). See docs/RELEASING.md.
+          script: npm run release

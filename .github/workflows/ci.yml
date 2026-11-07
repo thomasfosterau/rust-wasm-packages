@@ -17,6 +17,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # Nothing in CI pushes, so the checkout keeps no git credentials.
+          persist-credentials: false
 
       # Every package here compiles a Rust crate to wasm. The generated
       # `src/wasm.generated.ts` is not committed, so nothing — not even the

@@ -21,7 +21,7 @@
     "release": "vp run -r build && changeset publish"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.29.8",
+    "@changesets/cli": "^3.0.3",
     "@types/node": "^26.1.2",
     "tsx": "^4.23.5",
     "typescript": "^5.9.3",
