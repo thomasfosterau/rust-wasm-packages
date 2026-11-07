@@ -28,15 +28,6 @@ catalog:
   vite-plus: 1.5.0
 overrides:
   vite@*: "catalog:"
-  # Advisory floors for transitive dev tooling, which `pnpm audit
-  # --audit-level high` flags; nothing published reaches them (the argon2
-  # package has no dependencies). js-yaml GHSA (maxTotalMergeKeys CPU use):
-  # 3.x via @changesets/cli > @manypkg/get-packages > read-yaml-file, 4.x via
-  # @changesets/parse. Each is a caret range on the major its dependents ask
-  # for, so it never lifts them onto an untested major. Drop each once
-  # @changesets/cli resolves a patched version on its own.
-  "js-yaml@3": ^3.15.2
-  "js-yaml@4": ^4.3.2
 peerDependencyRules:
   allowAny:
     - vite

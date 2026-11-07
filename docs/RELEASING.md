@@ -19,7 +19,7 @@ via OIDC** — no long-lived `NPM_TOKEN`. The workflow already has
    Without this, the workflow runs `changeset version` and pushes the
    `changeset-release/trunk` branch successfully, but fails at the final step
    with `GitHub Actions is not permitted to create or approve pull requests`,
-   so no "Version Packages" PR is opened.
+   so no version PR is opened.
 
 2. **Configure a trusted publisher for each package on npmjs.com.**
    On `@thomasfosterau/argon2`, go to _Settings → Trusted Publisher_ and add a
@@ -35,7 +35,7 @@ via OIDC** — no long-lived `NPM_TOKEN`. The workflow already has
    > [granular access token](https://docs.npmjs.com/creating-and-viewing-access-tokens):
    >
    > ```sh
-   > # 1. Merge the open "Version Packages" PR first, so `trunk` carries the real
+   > # 1. Merge the open version PR first, so `trunk` carries the real
    > #    version. A fresh clone of `trunk` is still at 0.0.0, and publishing
    > #    that puts a placeholder 0.0.0 on the registry forever.
    > rustup target add wasm32-unknown-unknown
@@ -53,9 +53,10 @@ via OIDC** — no long-lived `NPM_TOKEN`. The workflow already has
 
 3. **Create the protected `release` environment.**
    _Settings → Environments → New environment_ named `release`, with at least
-   one **required reviewer**. The Release workflow's job runs in it
-   (`environment: release`), so nothing can mint the OIDC token npm trusts
-   without that approval. Create it **before** the workflow first runs with
+   one **required reviewer**. The Release workflow's `publish` job, the only
+   one that can publish, runs in it (`environment: release`), so nothing can
+   mint the OIDC token npm trusts without that approval. The `version` job,
+   which refreshes the version PR, runs outside it and needs no approval. Create it **before** the workflow first runs with
    the `environment:` key: GitHub otherwise creates `release` on first use
    with no protection rules.
 
@@ -81,10 +82,14 @@ that silently skipped `build:wasm` would be the small one.
    workflow runs `vp run version` (`changeset version`): it consumes the pending
    changesets, bumps the affected `package.json` versions, and writes each
    package's `CHANGELOG.md` on the `changeset-release/trunk` branch, then opens
-   (or updates) a **"Version Packages"** PR. Review it like any other PR.
+   (or updates) a **"chore: version packages"** PR. This step runs outside the
+   `release` environment, so it needs no approval. Review the PR like any
+   other.
 
-3. **Publish (automatic on merge).** Merging the "Version Packages" PR triggers
-   the workflow's publish step, `npm run release`
+3. **Publish (on merge, after approval).** Merging the version PR leaves no
+   changesets and a version not yet on npm, so the workflow starts its
+   `publish` job, which waits for the `release` environment's approval and then
+   runs `npm run release`
    (`vp run -r build && changeset publish`), which builds every package and
    publishes the ones whose versions changed to npm — authenticating via OIDC,
    no token required.
@@ -100,7 +105,7 @@ the latter, and nothing bumps the former automatically.
 
 If the workflow can't open the PR (e.g. setting #1 above is still off), the
 `changeset-release/trunk` branch is still pushed with the correct version bump —
-open the "Version Packages" PR from that branch by hand. You can also run the
+open the version PR from that branch by hand. You can also run the
 version step locally:
 
 ```sh
