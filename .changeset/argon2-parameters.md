@@ -9,6 +9,6 @@ Add `hash` and `verify`: synchronous functions that take the argon2 parameters a
 - `wasmModule` exports the compiled `WebAssembly.Module`, with its C ABI documented, so an adapter no longer needs to embed the wasm bytes itself.
 - Passwords may be passed as a `Uint8Array`. Password and salt copies are wiped from the module's memory after use, and an allocation the runtime cannot make now fails with an `Argon2Error` and leaves later calls working.
 
-`hashPassword` and `verifyPassword` are unchanged: their output is pinned, byte for byte, to hashes written by 0.1.1.
+`hashPassword` and `verifyPassword` are unchanged: their output is pinned, byte for byte, to hashes written by 0.1.1. The one difference is on their failure path: when the runtime cannot allocate the memory a hash asks for, they now reject with an `Argon2Error` whose code is `internal` — the trap is its `cause` — where 0.1.x let the raw `WebAssembly.RuntimeError` through.
 
 On Cloudflare Workers the package needs a compatibility date of 2025-06-01 or later, or the `allow_eval_during_startup` flag. That was already true of 0.1.x; it is now documented and tested against the real `workerd` runtime.

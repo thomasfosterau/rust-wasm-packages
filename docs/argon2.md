@@ -19,7 +19,7 @@ The functions return `Promise`s so they drop into password-hashing contracts tha
 | A costly stored hash | computed, whatever it asks for        | refused above the [limits](#limits-on-verification) |
 | Password             | a `string`                            | a `string` or a `Uint8Array`                        |
 
-`hashPassword` and `verifyPassword` are unchanged from 0.1.x, byte for byte: the tests pin their output to hashes the published 0.1.1 package wrote. With no options, `hash` writes exactly what `hashPassword` writes.
+`hashPassword` and `verifyPassword` are unchanged from 0.1.x, byte for byte: the tests pin their output to hashes the published 0.1.1 package wrote. One thing about their failure path did change: when the runtime cannot allocate the memory a hash asks for, they now reject with an `Argon2Error` whose code is `internal` (the trap is its `cause`) where 0.1.x let the raw `WebAssembly.RuntimeError` through, and the calls after it work. With no options, `hash` writes exactly what `hashPassword` writes.
 
 ```ts
 import { Argon2Error, hash, verify } from "@thomasfosterau/argon2";
@@ -82,7 +82,7 @@ The defaults are OWASP's second recommended argon2id option, for memory-constrai
 | Profile | `memoryKiB` | `iterations` | `parallelism` | Source                              | Time per hash in workerd |
 | ------- | ----------- | ------------ | ------------- | ----------------------------------- | ------------------------ |
 | Default | 19456       | 2            | 1             | OWASP, second option                | about 27 ms              |
-| Server  | 65536       | 3            | 4             | RFC 9106, second recommended option | about 195 ms             |
+| Server  | 65536       | 3            | 4             | RFC 9106, second recommended option | about 194 ms             |
 
 OWASP's other argon2id options trade memory for iterations, down to 7 MiB at 5 iterations. The times were measured by the test suite inside `workerd` on one x86-64 development machine; they are all CPU time, and they scale with memory × iterations. A Worker has a CPU-time limit per request, so measure on your own plan before choosing the server profile there.
 
@@ -107,7 +107,7 @@ Compiling inside a request is forbidden at every date, which is why this package
 
 - **Secrets.** The copies of the password and the salt in the module's memory are overwritten with zeros before they are released, and so is the encoded copy of a `string` password. argon2's working memory is wiped by the crate's `zeroize` feature. A JavaScript `string` cannot be wiped, so a caller who needs that passes a `Uint8Array` to `hash` / `verify` and wipes it afterwards.
 - **Footprint.** The module's memory grows to fit the largest memory cost used and stays that size, because WebAssembly memory cannot shrink: about 19 MiB at the defaults, 64 MiB after one hash at the server profile.
-- **A failed allocation.** The crate is built with `panic = "abort"`, so a memory cost the runtime cannot provide traps. The trapped instance is wiped and replaced with a fresh one from the same compiled module, the call fails with `internal`, and later calls work.
+- **A failed allocation.** The crate is built with `panic = "abort"`, so a memory cost the runtime cannot provide traps. The trapped instance is never used again: it is dropped and wiped, the call fails with `internal`, and later calls run on a fresh instance of the same compiled module. If that fresh instance cannot be created, there is no instance at all — each later call tries to create one before doing anything else, and fails with `internal` until it can.
 - **Concurrency.** Each call runs to completion on the calling thread and copies its result out before returning, so two requests in one isolate can never interleave inside the module. Nothing is spawned.
 
 ## The low-level entry
