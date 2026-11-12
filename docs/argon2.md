@@ -107,7 +107,7 @@ Compiling inside a request is forbidden at every date, which is why this package
 
 - **Secrets.** The copies of the password and the salt in the module's memory are overwritten with zeros before they are released, and so is the encoded copy of a `string` password. argon2's working memory is wiped by the crate's `zeroize` feature. A JavaScript `string` cannot be wiped, so a caller who needs that passes a `Uint8Array` to `hash` / `verify` and wipes it afterwards.
 - **Footprint.** The module's memory grows to fit the largest memory cost used and stays that size, because WebAssembly memory cannot shrink: about 19 MiB at the defaults, 64 MiB after one hash at the server profile.
-- **A failed allocation.** The crate is built with `panic = "abort"`, so a memory cost the runtime cannot provide traps. The trapped instance is replaced with a fresh one from the same compiled module and then wiped, the call fails with `internal`, and later calls work. If the replacement cannot be made, the trapped instance is left in place, unwiped.
+- **A failed allocation.** The crate is built with `panic = "abort"`, so a memory cost the runtime cannot provide traps. The trapped instance is never used again: it is dropped and wiped, the call fails with `internal`, and later calls run on a fresh instance of the same compiled module. If that fresh instance cannot be created, there is no instance at all — each later call tries to create one before doing anything else, and fails with `internal` until it can.
 - **Concurrency.** Each call runs to completion on the calling thread and copies its result out before returning, so two requests in one isolate can never interleave inside the module. Nothing is spawned.
 
 ## The low-level entry

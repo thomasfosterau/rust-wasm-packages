@@ -224,7 +224,23 @@ function instantiate(): Argon2Exports {
   return new WebAssembly.Instance(wasmModule, {}).exports as unknown as Argon2Exports;
 }
 
-let instance = instantiate();
+/**
+ * The instance every call runs on, created here at module scope. It is
+ * `undefined` only after a trap whose replacement could not be created; the
+ * next call then tries again before doing anything else.
+ */
+let instance: Argon2Exports | undefined = instantiate();
+
+/** The instance to run on, creating one if a trap left none. */
+function current(): Argon2Exports {
+  if (instance !== undefined) return instance;
+  try {
+    instance = instantiate();
+  } catch (cause) {
+    throw new Argon2Error("internal", "the wasm module could not be instantiated", { cause });
+  }
+  return instance;
+}
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -238,16 +254,16 @@ const decoder = new TextDecoder();
  *
  * The crate is built with `panic = "abort"`, so a failed allocation (a memory
  * cost the runtime cannot provide) traps. A trapped instance may have stopped
- * half-way through touching its heap, so it is replaced with a fresh
- * one from the same compiled module and wiped; the call fails with `internal`, and the
- * next call starts clean.
+ * half-way through touching its heap, so it is never used again: the call
+ * fails with `internal`, and the next call runs on a fresh instance of the
+ * same compiled module.
  */
 function call<Result>(
   first: Uint8Array,
   second: Uint8Array,
   body: (wasm: Argon2Exports, firstPointer: number, secondPointer: number) => Result,
 ): Result {
-  const wasm = instance;
+  const wasm = current();
   try {
     const firstPointer = wasm.alloc(first.length);
     const secondPointer = wasm.alloc(second.length);
@@ -266,19 +282,21 @@ function call<Result>(
 }
 
 /**
- * Replace a trapped instance, then wipe it. Returns the cause to report.
+ * Retire a trapped instance: drop it, wipe its memory, and put a fresh one in
+ * its place. Returns the cause to report.
  *
- * The replacement is made first: if it cannot be made, the trapped instance
- * stays in place untouched — a wiped one could do nothing at all — and the
- * failure to replace it is reported alongside the trap.
+ * The trapped instance is dropped first and unconditionally. If its
+ * replacement cannot be created there is no instance at all, rather than a
+ * trapped or a wiped one, and the next call tries again.
  */
 function retire(trapped: Argon2Exports, cause: unknown): unknown {
+  instance = undefined;
+  new Uint8Array(trapped.memory.buffer).fill(0);
   try {
     instance = instantiate();
   } catch (replacementCause) {
     return new AggregateError([cause, replacementCause], "the trapped instance was not replaced");
   }
-  new Uint8Array(trapped.memory.buffer).fill(0);
   return cause;
 }
 
