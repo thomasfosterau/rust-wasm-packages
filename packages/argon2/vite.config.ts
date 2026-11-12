@@ -11,7 +11,7 @@ export default defineConfig({
       // Uncached: cargo does its own incremental caching, and the emitted file
       // is an input to everything below, so a stale cache hit here would be
       // silently wrong.
-      "build:wasm": { command: "tsx scripts/build-wasm.ts", cache: false },
+      "build:wasm": { command: "vpx scripts/build-wasm.ts", cache: false },
       build: {
         command: "vp pack",
         dependsOn: ["build:wasm"],
