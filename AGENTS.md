@@ -9,13 +9,11 @@ This repository is managed by [Vite+](https://viteplus.dev): a pnpm monorepo of 
 - `vp check` — format (Oxfmt), lint (Oxlint), and type-check (tsgolint); `--fix` to autofix
 - `vp run -r test` — run every package's Vitest suite
 
-**You need a Rust toolchain with the wasm target**, or nothing works:
+- `vp run ci` — all of the above in order (build → check → test with coverage); the one command CI runs
 
-```sh
-rustup target add wasm32-unknown-unknown
-```
+**You need a Rust toolchain (rustup)**, or nothing works. `rust-toolchain.toml` names the `wasm32-unknown-unknown` target, so rustup installs it the first time cargo runs here.
 
-**Build before checking or testing on a clean checkout.** Nothing type-checks until `build:wasm` has emitted `src/wasm.generated.ts` — it is gitignored. Every other task declares `dependsOn: ["build:wasm"]`, and CI orders the steps build → check → test.
+**Build before checking or testing on a clean checkout.** Nothing type-checks until `build:wasm` has emitted `src/wasm.generated.ts` — it is gitignored. Every other task depends on `build:wasm`, and the `ci` task orders the steps build → check → test.
 
 Use `./node_modules/.bin/vp` if the global `vp` CLI is not installed.
 
@@ -38,6 +36,10 @@ These are not style preferences — each one is a platform requirement that loca
 ## Adding a package
 
 Mirror `packages/argon2`: a `Cargo.toml` (with `publish = false` — the crate goes to npm, not crates.io), `src/lib.rs`, `scripts/build-wasm.ts`, a `vite.config.ts` declaring the `build:wasm` → `build`/`test` task chain, and a `package.json` whose `files` ships `dist`, `CHANGELOG.md` and the Rust source. Add it to the CI cargo cache key's path list and to `docs/RELEASING.md`.
+
+## CI
+
+`.github/workflows/ci.yml` is the only CI workflow and runs one command, `vp run ci`, on Node's LTS and current release lines. A new gate belongs in the `ci` task in the root `vite.config.ts` (or in a package task it runs), not in a workflow step, so that local and CI stay the same thing. The `ci` job at the end of the workflow is the single check name for required checks.
 
 ## Releasing
 
