@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        uses: actions/checkout@v4.4.0
         with:
           # Nothing in CI pushes, so the checkout keeps no git credentials.
           persist-credentials: false
@@ -28,7 +28,7 @@ jobs:
         run: rustup target add wasm32-unknown-unknown
 
       - name: Cache cargo
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@v4.3.0
         with:
           path: |
             ~/.cargo/registry
@@ -38,7 +38,7 @@ jobs:
           restore-keys: cargo-${{ runner.os }}-
 
       - name: Setup Vite+
-        uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        uses: voidzero-dev/setup-vp@v1.22.0
         with:
           cache: true
           run-install: false

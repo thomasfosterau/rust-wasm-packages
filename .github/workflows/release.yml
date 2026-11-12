@@ -42,12 +42,12 @@ jobs:
       mode: ${{ steps.mode.outputs.mode }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        uses: actions/checkout@v4.4.0
         with:
           persist-credentials: false
 
       - name: Setup Vite+
-        uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        uses: voidzero-dev/setup-vp@v1.22.0
         with:
           cache: true
           run-install: false
@@ -59,7 +59,7 @@ jobs:
       # (no credentials needed) to find the versions not yet on npm.
       - name: Select mode
         id: mode
-        uses: changesets/action/select-mode@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        uses: changesets/action/select-mode@v2.1.2
 
   version:
     name: Version packages
@@ -76,13 +76,13 @@ jobs:
       pull-requests: write # open/update the "Version Packages" PR
     steps:
       - name: Checkout code
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        uses: actions/checkout@v4.4.0
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Vite+
-        uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        uses: voidzero-dev/setup-vp@v1.22.0
         with:
           cache: true
           run-install: false
@@ -91,7 +91,7 @@ jobs:
         run: vp install --frozen-lockfile
 
       - name: Create or update the version PR
-        uses: changesets/action/version@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        uses: changesets/action/version@v2.1.2
         with:
           script: vp run version
           commit-message: "chore: version packages"
@@ -118,7 +118,7 @@ jobs:
       # The publish sub-action pushes tags through the GitHub API, so the
       # checkout keeps no credentials.
       - name: Checkout code
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        uses: actions/checkout@v4.4.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -129,7 +129,7 @@ jobs:
         run: rustup target add wasm32-unknown-unknown
 
       - name: Setup Vite+
-        uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        uses: voidzero-dev/setup-vp@v1.22.0
         with:
           cache: true
           run-install: false
@@ -166,6 +166,6 @@ jobs:
       # (the `id-token: write` permission above + a trusted publisher
       # configured for each package on npmjs.com). See docs/RELEASING.md.
       - name: Publish to npm
-        uses: changesets/action/publish@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        uses: changesets/action/publish@v2.1.2
         with:
           script: npm run release
