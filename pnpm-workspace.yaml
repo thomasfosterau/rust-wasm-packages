@@ -6,10 +6,8 @@
 # `packages/argon2/scripts/build-wasm.ts` for why a string constant rather than
 # an asset import.
 #
-# Building therefore needs a Rust toolchain with the `wasm32-unknown-unknown`
-# target installed. `.github/workflows/ci.yml` sets that up; locally:
-#
-#   rustup target add wasm32-unknown-unknown
+# Building therefore needs a Rust toolchain. `rust-toolchain.toml` names the
+# `wasm32-unknown-unknown` target, so rustup installs it on first use.
 packages:
   - "packages/*"
 

@@ -4,16 +4,23 @@ This is a pnpm monorepo managed by [Vite+](https://viteplus.dev) (the `vp` CLI).
 
 ## Setup
 
-You need Node (see `engines` in `package.json`), a Rust toolchain with the wasm target, and `vp` (or use `./node_modules/.bin/vp` after a `pnpm install`):
+You need Node (see `engines` in `package.json`), a Rust toolchain installed with rustup, and `vp` (or use `./node_modules/.bin/vp` after a `pnpm install`):
 
 ```sh
-rustup target add wasm32-unknown-unknown
 vp install
 ```
 
+`rust-toolchain.toml` names the `wasm32-unknown-unknown` target, so rustup installs it the first time cargo runs here.
+
 ## The loop
 
-Run these in order — CI does the same:
+One command runs everything CI runs, in order, and stops at the first failure:
+
+```sh
+vp run ci
+```
+
+CI runs exactly that, on Node's LTS and current release lines. The steps it is made of, for running one at a time:
 
 ```sh
 vp run -r build   # cargo build -> src/wasm.generated.ts -> dist/

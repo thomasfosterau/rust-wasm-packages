@@ -10,7 +10,7 @@
     "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
     "ghcr.io/devcontainer-community/devcontainer-features/jq:1": {},
     // Every package compiles a Rust crate to wasm32-unknown-unknown, so nothing
-    // builds, type-checks or tests without it (CI runs the same rustup target).
+    // builds, type-checks or tests without it (rust-toolchain.toml names the same target).
     "ghcr.io/devcontainers/features/rust:1": {
       "targets": "wasm32-unknown-unknown"
     }
