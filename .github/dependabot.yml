@@ -1,0 +1,64 @@
+# Dependabot: weekly version updates, each assigned to the owner.
+#
+# Every update is its own pull request, except the `toolchain` group: vite-plus
+# and the Vitest packages move in lockstep, so they are bumped together.
+#
+# Moves Dependabot cannot make, to do by hand on its pull request:
+#
+# - A vite-plus bump: the `vite` catalog entry in pnpm-workspace.yaml is
+#   vite-plus's core under an npm alias and must equal the vite-plus version.
+#   Dependabot cannot bump an alias, so move it on the same branch (e.g. by
+#   re-running `vp migrate`). Any direct `vitest` dependency is set to the
+#   version vite-plus pins.
+# - The same bump: the `ghcr.io/voidzero-dev/vite-plus` image tag in
+#   .devcontainer/devcontainer.json. The devcontainers updates below cover
+#   only the features, not the image.
+# - The `npm` and `pnpm` versions installed by `run:` steps in
+#   .github/workflows/release.yml, which Dependabot does not see.
+
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 1
+    assignees:
+      - thomasfosterau
+    groups:
+      toolchain:
+        patterns:
+          - vite-plus
+          - vitest
+          - "@vitest/*"
+
+  # One entry per crate: each package has its own Cargo.lock, so a new package
+  # needs a new entry here.
+  - package-ecosystem: cargo
+    directory: /packages/argon2
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 1
+    assignees:
+      - thomasfosterau
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 1
+    assignees:
+      - thomasfosterau
+
+  - package-ecosystem: devcontainers
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 1
+    assignees:
+      - thomasfosterau
