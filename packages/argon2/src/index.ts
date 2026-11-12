@@ -238,8 +238,8 @@ const decoder = new TextDecoder();
  *
  * The crate is built with `panic = "abort"`, so a failed allocation (a memory
  * cost the runtime cannot provide) traps. A trapped instance may have stopped
- * half-way through touching its heap, so it is wiped and replaced with a fresh
- * one from the same compiled module; the call fails with `internal`, and the
+ * half-way through touching its heap, so it is replaced with a fresh
+ * one from the same compiled module and wiped; the call fails with `internal`, and the
  * next call starts clean.
  */
 function call<Result>(
@@ -261,10 +261,25 @@ function call<Result>(
     wasm.dealloc(secondPointer, second.length);
     return result;
   } catch (cause) {
-    new Uint8Array(wasm.memory.buffer).fill(0);
-    instance = instantiate();
-    throw new Argon2Error("internal", "the computation failed", { cause });
+    throw new Argon2Error("internal", "the computation failed", { cause: retire(wasm, cause) });
   }
+}
+
+/**
+ * Replace a trapped instance, then wipe it. Returns the cause to report.
+ *
+ * The replacement is made first: if it cannot be made, the trapped instance
+ * stays in place untouched — a wiped one could do nothing at all — and the
+ * failure to replace it is reported alongside the trap.
+ */
+function retire(trapped: Argon2Exports, cause: unknown): unknown {
+  try {
+    instance = instantiate();
+  } catch (replacementCause) {
+    return new AggregateError([cause, replacementCause], "the trapped instance was not replaced");
+  }
+  new Uint8Array(trapped.memory.buffer).fill(0);
+  return cause;
 }
 
 /** Read the PHC string the last hash call left in module memory. */
@@ -281,6 +296,14 @@ function passwordBytes(password: string | Uint8Array): readonly [Uint8Array, boo
   if (typeof password === "string") return [encoder.encode(password), true];
   if (password instanceof Uint8Array) return [password, false];
   throw new Argon2Error("invalid-parameters", "the password must be a string or a Uint8Array");
+}
+
+/** `options`, checked to be an object: `null` is not a way to omit it. */
+function optionsObject<Options extends object>(options: Options): Options {
+  if (typeof options !== "object" || options === null) {
+    throw new Argon2Error("invalid-parameters", "options must be an object when given");
+  }
+  return options;
 }
 
 /** `value`, checked to be an integer in `[min, max]`. */
@@ -322,6 +345,7 @@ function resolveSalt(salt: Uint8Array | undefined, saltLength: number | undefine
  * when the memory cost cannot be allocated.
  */
 export function hash(password: string | Uint8Array, options: HashOptions = {}): string {
+  optionsObject(options);
   const variant = options.variant ?? "argon2id";
   if (!Object.hasOwn(VARIANT_IDS, variant)) {
     throw new Argon2Error("invalid-parameters", "variant must be argon2id, argon2i or argon2d");
@@ -393,6 +417,7 @@ export function verify(
   if (typeof stored !== "string") {
     throw new Argon2Error("invalid-parameters", "the stored hash must be a string");
   }
+  optionsObject(options);
   const maxMemoryKiB = integer(
     "maxMemoryKiB",
     options.maxMemoryKiB ?? DEFAULT_MAX_MEMORY_KIB,

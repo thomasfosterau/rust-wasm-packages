@@ -126,6 +126,17 @@ describe("hash", () => {
     expect(entered).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["null", null],
+    ["a string", "argon2id"],
+    ["a number", 3],
+  ])("rejects options given as %s", (_label, options) => {
+    expect(codeOf(() => hash(PASSWORD, options as unknown as object))).toBe("invalid-parameters");
+    expect(codeOf(() => verify(PASSWORD, REFERENCE[0].hash, options as unknown as object))).toBe(
+      "invalid-parameters",
+    );
+  });
+
   it("rejects a password that is neither a string nor bytes", () => {
     expect(codeOf(() => hash(42 as unknown as string))).toBe("invalid-parameters");
     expect(codeOf(() => verify(42 as unknown as string, REFERENCE[0].hash))).toBe(
@@ -249,6 +260,35 @@ describe("a failed allocation", () => {
       true,
     );
     expect(instantiated).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the trapped instance, unwiped, when it cannot be replaced", () => {
+    const wiped = vi.spyOn(Uint8Array.prototype, "fill");
+    vi.spyOn(WebAssembly, "Instance").mockImplementationOnce(function unavailable() {
+      throw new Error("no instance available");
+    });
+    try {
+      // Bytes, not a string: a string's encoded copy would be zero-filled,
+      // and this test is about the module's memory not being.
+      hash(new TextEncoder().encode(PASSWORD), unallocatable);
+      expect.unreachable("the allocation should have failed");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Argon2Error);
+      expect((error as Argon2Error).code).toBe("internal");
+      const { cause } = error as Argon2Error;
+      expect(cause).toBeInstanceOf(AggregateError);
+      expect((cause as AggregateError).errors[0]).toBeInstanceOf(WebAssembly.RuntimeError);
+      expect((cause as AggregateError).errors[1]).toEqual(new Error("no instance available"));
+    }
+    // Nothing was zero-filled: the module still in use was left as it was.
+    expect(wiped).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+
+    // The module that trapped is still the one in use, and still works.
+    const instantiated = vi.spyOn(WebAssembly, "Instance");
+    const next = hash(PASSWORD, { ...CHEAP, salt: FIXED_SALT });
+    expect(verify(PASSWORD, next)).toBe(true);
+    expect(instantiated).not.toHaveBeenCalled();
   });
 
   it("is what an over-large stored hash does to verifyPassword, which has no limits", async () => {
