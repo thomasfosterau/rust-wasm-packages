@@ -24,7 +24,7 @@ allowBuilds:
 # must always equal the `vite-plus` version (Dependabot cannot bump an alias,
 # so move it with every vite-plus bump, e.g. by re-running `vp migrate`).
 catalog:
-  vite: npm:@voidzero-dev/vite-plus-core@1.5.0
+  vite: npm:@voidzero-dev/vite-plus-core@1.6.0
   vite-plus: 1.6.0
 overrides:
   vite@*: "catalog:"
