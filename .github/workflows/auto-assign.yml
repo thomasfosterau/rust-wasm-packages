@@ -1,8 +1,8 @@
 name: Auto-assign
 
 # Assigns each new pull request to the owner, so nothing sits unowned.
-# Dependabot's pull requests are assigned by .github/dependabot.yml instead,
-# and ones that already have an assignee are left alone.
+# Dependabot's pull requests, and ones that already have an assignee, are
+# left alone.
 
 on:
   pull_request:
