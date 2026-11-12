@@ -31,7 +31,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [lts, latest]
+        # The LTS line and the Current line. Current is pinned by major
+        # because setup-vp resolves `latest` to the same release as `lts`;
+        # move it when a new Current line is released.
+        node: [lts, "27"]
 
     steps:
       - name: Checkout code
