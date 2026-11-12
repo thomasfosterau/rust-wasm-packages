@@ -17,14 +17,17 @@ export default defineConfig({
         dependsOn: ["build:wasm"],
         cache: false,
       },
+      // The tests depend on `build`, not just `build:wasm`: the workerd tests
+      // load `dist/index.js`, the bundle that is published, into the real
+      // Workers runtime.
       test: {
         command: "vp test run",
-        dependsOn: ["build:wasm"],
+        dependsOn: ["build"],
         cache: false,
       },
       "test:coverage": {
         command: "vp test run --coverage",
-        dependsOn: ["build:wasm"],
+        dependsOn: ["build"],
         cache: false,
       },
     },
@@ -61,12 +64,11 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       // The generated base64 blob is data, not logic.
       exclude: ["**/*.d.ts", "src/wasm.generated.ts"],
-      // branches is 50 because the module has exactly two: the happy path and
-      // a defensive `length < 0` throw that the public API cannot reach — the
-      // cost parameters are module constants and the salt is always 16 bytes,
-      // so the wasm `hash` export has no way to fail from here. Raising this
-      // would require exporting internals purely to test an unreachable line.
-      thresholds: { statements: 95, branches: 50, functions: 100, lines: 100 },
+      // What is left uncovered is three defensive checks on the wasm module's
+      // return codes (a negative length from the two hash entry points, an
+      // unknown code from `verify_with`). The arguments are validated before
+      // the call, so no input reaches them through the public API.
+      thresholds: { statements: 97, branches: 90, functions: 100, lines: 99 },
     },
   },
 });

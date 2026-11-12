@@ -25,7 +25,7 @@ These are not style preferences — each one is a platform requirement that loca
 
 1. **The wasm is embedded as a base64 string constant, never imported as an asset.** An asset import needs a bundler-specific suffix (`?url` / `?inline` for Vite, `?module` / `?init` for the Cloudflare rolldown plugin), so one source can't serve both a Vitest module runner and a deployed Worker bundle. A string constant is plain JavaScript with no resolution behaviour to get wrong. Do not "improve" this into an asset import.
 
-2. **Instantiate the wasm at module scope, never lazily per call.** Workers permits synchronous `WebAssembly.Module` construction during startup and forbids it inside a request. A lazy per-call path passes every local test and fails on the platform.
+2. **Instantiate the wasm at module scope, never lazily per call.** Workers permits synchronous `WebAssembly.Module` construction during startup (from compatibility date 2025-06-01, or with `allow_eval_during_startup`) and forbids it inside a request. A lazy per-call path passes every test that runs under Node and fails on the platform; `packages/argon2/tests/workerd.test.ts` runs the built package in the real `workerd` runtime to catch that.
 
 3. **The computation stays synchronous.** workerd has no async task pool and refuses to spawn a `Worker`. Exported functions may return `Promise`s to fit caller contracts, but must not depend on real asynchrony underneath.
 

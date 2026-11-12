@@ -12,6 +12,6 @@ The packages target edge runtimes, Cloudflare Workers (workerd) first. Each cons
 
 1. **The wasm is a base64 string constant, not an asset import.** Importing a `.wasm` file needs a bundler-specific suffix (`?url` / `?inline` for Vite, `?module` / `?init` for the Cloudflare rolldown plugin), so one source can't serve both a Vitest module runner and a deployed Worker bundle. A string constant is plain JavaScript with no resolution behaviour to get wrong, identical under every bundler and test runner.
 
-2. **The wasm is instantiated at module scope.** Workers permits synchronous `WebAssembly.Module` construction while a module is being evaluated and forbids it inside a request. Moving instantiation into a lazy per-call path would break on the platform while still passing every local test.
+2. **The wasm is instantiated at module scope.** Workers permits synchronous `WebAssembly.Module` construction while a module is being evaluated — from compatibility date 2025-06-01, or with the `allow_eval_during_startup` flag — and forbids it inside a request. Moving instantiation into a lazy per-call path would break on the platform while still passing every local test.
 
 3. **The computation is synchronous.** workerd has no async task pool and refuses to spawn a `Worker`. Exported functions may return `Promise`s to fit caller contracts, but the work underneath runs on the calling thread.

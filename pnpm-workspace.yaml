@@ -20,6 +20,10 @@ allowBuilds:
   # Only an optional perf accelerator for msgpackr (also transitive); the
   # pure-JS fallback is used when it isn't built.
   msgpackr-extract: false
+  # Runs the real Workers runtime in the tests. Its binary arrives as a
+  # platform-specific optional dependency; the postinstall is only a fallback
+  # download for when that was skipped, and a test fails if the binary is absent.
+  workerd: false
 # Written by `vp migrate`: `vite` is vite-plus's core under an npm alias and
 # must always equal the `vite-plus` version (Dependabot cannot bump an alias,
 # so move it with every vite-plus bump, e.g. by re-running `vp migrate`).

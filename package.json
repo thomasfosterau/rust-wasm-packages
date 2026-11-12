@@ -23,9 +23,11 @@
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
     "@types/node": "^26.6.6",
+    "@vitest/coverage-istanbul": "5.1.0",
     "typescript": "^7.0.2",
     "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "workerd": "^1.20261110.1"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
