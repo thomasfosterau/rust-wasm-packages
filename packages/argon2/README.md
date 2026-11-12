@@ -19,9 +19,20 @@ await verifyPassword({ hash, password: "hunter2" }); // false
 
 `verifyPassword` never throws: a malformed stored hash — or a call with the wrong argument shape — returns `false`, exactly like a wrong password.
 
+To choose the costs, salt, digest length or variant, or to tell a wrong password from a stored value that cannot be checked, use the synchronous `hash` and `verify`:
+
+```ts
+import { hash, verify } from "@thomasfosterau/argon2";
+
+const stored = hash("correct horse battery staple", { memoryKiB: 65_536, iterations: 3 });
+verify("correct horse battery staple", stored); // true; throws an Argon2Error for a bad stored value
+```
+
+On Cloudflare Workers this needs a compatibility date of 2025-06-01 or later, or the `allow_eval_during_startup` flag.
+
 ## Documentation
 
-- [Design notes](https://github.com/thomasfosterau/rust-wasm-packages/blob/trunk/docs/argon2.md) — why this exists, the cost parameters, and the never-throws contract.
+- [Reference and design notes](https://github.com/thomasfosterau/rust-wasm-packages/blob/trunk/docs/argon2.md) — every option and error code, the cost profiles, limits on verification, Workers requirements and the low-level entry.
 - [Architecture](https://github.com/thomasfosterau/rust-wasm-packages/blob/trunk/docs/ARCHITECTURE.md) — how the wasm is embedded and why.
 - [Changelog](https://github.com/thomasfosterau/rust-wasm-packages/blob/trunk/packages/argon2/CHANGELOG.md)
 - [Contributing](https://github.com/thomasfosterau/rust-wasm-packages/blob/trunk/CONTRIBUTING.md)
