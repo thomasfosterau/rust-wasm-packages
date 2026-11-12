@@ -2,35 +2,29 @@
 
 Good, useful Rust crates made available to JavaScript via WebAssembly — built for edge runtimes (Cloudflare Workers, Deno, browsers) where native bindings can't go and pure-JS implementations are too slow.
 
-| Package                                     | Source                               | Description                                                                   |
-| ------------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------- |
-| [`@thomasfosterau/argon2`](packages/argon2) | [`packages/argon2`](packages/argon2) | argon2id password hashing — synchronous, dependency-free, workerd-compatible. |
+| Package                                                                                                     | Description                                                                   |
+| ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| [`@thomasfosterau/argon2`](https://github.com/thomasfosterau/rust-wasm-packages/tree/trunk/packages/argon2) | argon2id password hashing — synchronous, dependency-free, workerd-compatible. |
 
-## The shape of a package here
-
-Each package pairs a Rust crate (`src/lib.rs` + `Cargo.toml`) with a thin TypeScript wrapper. The crate compiles to `wasm32-unknown-unknown` and the bytes are embedded in the wrapper as a **base64 string constant**, not imported as an asset.
-
-That last part is deliberate. An asset import needs a bundler-specific suffix (`?url` / `?inline` for Vite, `?module` / `?init` for the Cloudflare rolldown plugin), so the same source can't serve a Vitest module runner and a deployed Worker bundle. A string constant is plain JavaScript with no resolution behaviour to get wrong.
-
-The generated file is **never committed**: `build:wasm` regenerates it from the Rust source, and every other task depends on that, so the artifact cannot drift from the crate. The published `dist/` does contain it — consumers need no Rust toolchain.
-
-## Development
-
-This repository is managed by [Vite+](https://viteplus.dev) (the `vp` CLI), and building needs a Rust toolchain with the wasm target:
+Each package embeds its compiled wasm, so consumers need no Rust toolchain and no bundler-specific asset handling.
 
 ```sh
-rustup target add wasm32-unknown-unknown
-
-vp install        # install dependencies
-vp run -r build   # cargo build -> wasm.generated.ts -> dist/
-vp check          # format (Oxfmt), lint (Oxlint), type-check (tsgolint)
-vp run -r test    # run every package's Vitest suite
+npm install @thomasfosterau/argon2
 ```
 
-Build before checking or testing on a clean checkout: nothing type-checks until `build:wasm` has emitted `src/wasm.generated.ts`.
+```ts
+import { hashPassword, verifyPassword } from "@thomasfosterau/argon2";
 
-Releases are automated with [Changesets](https://github.com/changesets/changesets) — see [docs/RELEASING.md](docs/RELEASING.md).
+const hash = await hashPassword("correct horse battery staple");
+await verifyPassword({ hash, password: "correct horse battery staple" }); // true
+```
+
+## Documentation
+
+- [Architecture](https://github.com/thomasfosterau/rust-wasm-packages/blob/trunk/docs/ARCHITECTURE.md) — the shape of a package and the platform constraints behind it.
+- [Contributing](https://github.com/thomasfosterau/rust-wasm-packages/blob/trunk/CONTRIBUTING.md) — setup, and the build → check → test loop.
+- [Releasing](https://github.com/thomasfosterau/rust-wasm-packages/blob/trunk/docs/RELEASING.md) — Changesets and npm Trusted Publishing.
 
 ## License
 
-[MIT](LICENSE)
+[MIT](https://github.com/thomasfosterau/rust-wasm-packages/blob/trunk/LICENSE)
