@@ -82,7 +82,8 @@ that silently skipped `build:wasm` would be the small one.
    workflow runs `vp run version` (`changeset version`): it consumes the pending
    changesets, bumps the affected `package.json` versions, and writes each
    package's `CHANGELOG.md` on the `changeset-release/trunk` branch, then opens
-   (or updates) a **"chore: version packages"** PR. This step runs outside the
+   (or updates) a **"chore: version packages"** PR and assigns it to the owner.
+   This step runs outside the
    `release` environment, so it needs no approval. Review the PR like any
    other.
 
