@@ -1,8 +1,8 @@
 name: Auto-assign
 
 # Assigns each new pull request to the owner, so nothing sits unowned.
-# Dependabot's pull requests are skipped: its token is read-only on
-# `pull_request`, so the edit would fail.
+# Dependabot's pull requests, and ones that already have an assignee, are
+# left alone.
 
 on:
   pull_request:
