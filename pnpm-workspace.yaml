@@ -25,7 +25,7 @@ allowBuilds:
 # so move it with every vite-plus bump, e.g. by re-running `vp migrate`).
 catalog:
   vite: npm:@voidzero-dev/vite-plus-core@1.5.0
-  vite-plus: 1.5.0
+  vite-plus: 1.6.0
 overrides:
   vite@*: "catalog:"
 peerDependencyRules:
