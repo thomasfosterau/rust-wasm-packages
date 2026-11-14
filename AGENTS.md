@@ -39,7 +39,7 @@ Mirror `packages/argon2`: a `Cargo.toml` (with `publish = false` — the crate g
 
 ## CI
 
-`.github/workflows/ci.yml` is the only CI workflow and runs one command, `vp run ci`, on Node's LTS and current release lines. A new gate belongs in the `ci` task in the root `vite.config.ts` (or in a package task it runs), not in a workflow step, so that local and CI stay the same thing. The `ci` job at the end of the workflow is the single check name for required checks.
+`.github/workflows/ci.yml` is the only CI workflow and runs one command, `vp run ci`, on Node's LTS and current release lines. A new gate belongs in the `ci` task in the root `vite.config.ts` (or in a package task it runs), not in a workflow step, so that local and CI stay the same thing. Each line is its own check — `ci (node lts)` and `ci (node latest)` — and those are the names a ruleset requires; there is no aggregate job.
 
 ## Releasing
 

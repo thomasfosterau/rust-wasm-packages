@@ -2,8 +2,8 @@ name: CI
 
 # One workflow, one command: `vp run ci`, the task in vite.config.ts that
 # builds, checks and tests every package. Run it locally to get the same
-# verdict. It runs here on Node's LTS and current release lines; the final
-# `ci` job folds the matrix into a single check name for required checks.
+# verdict. It runs here on Node's LTS and current release lines, one check per
+# line: `ci (node lts)` and `ci (node latest)`.
 
 on:
   pull_request:
@@ -22,7 +22,7 @@ concurrency:
 permissions: {}
 
 jobs:
-  test:
+  ci:
     name: ci (node ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -64,17 +64,3 @@ jobs:
 
       - name: Run the ci task
         run: vp run ci
-
-  # The one stable check name. It passes only when every matrix job did.
-  ci:
-    name: ci
-    needs: [test]
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions: {}
-    steps:
-      - name: Require every matrix job to have passed
-        env:
-          RESULT: ${{ needs.test.result }}
-        run: test "$RESULT" = "success"
