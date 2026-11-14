@@ -27,7 +27,7 @@
     "typescript": "^7.0.2",
     "vite": "catalog:",
     "vite-plus": "catalog:",
-    "workerd": "^1.20261110.1"
+    "workerd": "^1.20261113.1"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
