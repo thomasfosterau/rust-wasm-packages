@@ -160,7 +160,7 @@ jobs:
       # (pinned to the workspace's pnpm version) or the publish fails with
       # `spawn pnpm ENOENT`.
       - name: Ensure pnpm is on PATH for changeset publish
-        run: npm install -g pnpm@11.18.0
+        run: npm install -g pnpm@12.21.0
 
       # Run the release script via `npm run`, NOT `vp run`: npm forwards the
       # ambient environment to child processes, whereas `vp run` does not

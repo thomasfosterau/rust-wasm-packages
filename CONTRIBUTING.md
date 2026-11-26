@@ -4,7 +4,7 @@ This is a pnpm monorepo managed by [Vite+](https://viteplus.dev) (the `vp` CLI).
 
 ## Setup
 
-You need Node (see `engines` in `package.json`), a Rust toolchain installed with rustup, and `vp` (or use `./node_modules/.bin/vp` after a `pnpm install`):
+You need a Rust toolchain installed with rustup and `vp`, which installs the Node.js in `.node-version` (within `engines` in `package.json`) and the pnpm in `packageManager` (or use `./node_modules/.bin/vp` after a `pnpm install`):
 
 ```sh
 vp install

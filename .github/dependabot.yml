@@ -1,64 +1,96 @@
-# Dependabot: weekly version updates, each assigned to the owner.
-#
-# Every update is its own pull request, except the `toolchain` group: vite-plus
-# and the Vitest packages move in lockstep, so they are bumped together.
+# Shared policy (one copy per thomasfosterau repository; the source is
+# thomasfosterau/create's docs/dependencies.md): weekly on Wednesday morning in
+# Melbourne. Security updates ignore the schedule and open as soon as an
+# advisory lands, one PR each.
 #
 # Moves Dependabot cannot make, to do by hand on its pull request:
 #
 # - A vite-plus bump: the `vite` catalog entry in pnpm-workspace.yaml is
-#   vite-plus's core under an npm alias and must equal the vite-plus version.
-#   Dependabot cannot bump an alias, so move it on the same branch (e.g. by
-#   re-running `vp migrate`). Any direct `vitest` dependency is set to the
-#   version vite-plus pins.
+#   vite-plus's core under an npm alias, at the version vite-plus depends on,
+#   and `@vitest/coverage-istanbul` equals the vitest it pins. Re-run
+#   `vp migrate` on the same branch.
 # - The same bump: the `ghcr.io/voidzero-dev/vite-plus` image tag in
 #   .devcontainer/devcontainer.json. The devcontainers updates below cover
 #   only the features, not the image.
 # - The `npm` and `pnpm` versions installed by `run:` steps in
-#   .github/workflows/release.yml, which Dependabot does not see.
-
+#   .github/workflows/release.yml, which Dependabot does not see; the pnpm one
+#   equals `packageManager`.
 version: 2
-
 updates:
-  - package-ecosystem: npm
-    directory: /
+  - package-ecosystem: "npm"
+    directory: "/"
     schedule:
-      interval: weekly
-    cooldown:
-      default-days: 1
+      interval: "weekly"
+      day: "wednesday"
+      time: "06:00"
+      timezone: "Australia/Melbourne"
     assignees:
       - thomasfosterau
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+    cooldown:
+      default-days: 1
+    # Every dependency here is development-only, so this takes them all.
     groups:
       toolchain:
+        dependency-type: "development"
         patterns:
-          - vite-plus
-          - vitest
-          - "@vitest/*"
+          - "*"
 
   # One entry per crate: each package has its own Cargo.lock, so a new package
   # needs a new entry here.
-  - package-ecosystem: cargo
-    directory: /packages/argon2
+  - package-ecosystem: "cargo"
+    directory: "/packages/argon2"
     schedule:
-      interval: weekly
-    cooldown:
-      default-days: 1
+      interval: "weekly"
+      day: "wednesday"
+      time: "06:00"
+      timezone: "Australia/Melbourne"
     assignees:
       - thomasfosterau
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+    cooldown:
+      default-days: 1
 
-  - package-ecosystem: github-actions
-    directory: /
+  # Workflows pin each action to a commit SHA with a version comment, which
+  # Dependabot keeps current.
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
-      interval: weekly
-    cooldown:
-      default-days: 1
+      interval: "weekly"
+      day: "wednesday"
+      time: "06:00"
+      timezone: "Australia/Melbourne"
     assignees:
       - thomasfosterau
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+    cooldown:
+      default-days: 1
+    groups:
+      actions:
+        patterns:
+          - "*"
 
-  - package-ecosystem: devcontainers
-    directory: /
+  - package-ecosystem: "devcontainers"
+    directory: "/"
     schedule:
-      interval: weekly
-    cooldown:
-      default-days: 1
+      interval: "weekly"
+      day: "wednesday"
+      time: "06:00"
+      timezone: "Australia/Melbourne"
     assignees:
       - thomasfosterau
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+    cooldown:
+      default-days: 1
