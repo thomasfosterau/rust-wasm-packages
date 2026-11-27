@@ -32,6 +32,12 @@ updates:
       prefix: "chore"
     cooldown:
       default-days: 1
+    ignore:
+      # `vite` (aliased to vite-plus-core), `vitest` and `@vitest/*` are pinned
+      # to what `vite-plus` depends on and move by hand with it.
+      - dependency-name: "vite"
+      - dependency-name: "vitest"
+      - dependency-name: "@vitest/*"
     # Every dependency here is development-only, so this takes them all.
     groups:
       toolchain:
