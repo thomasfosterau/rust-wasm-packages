@@ -82,7 +82,12 @@ that silently skipped `build:wasm` would be the small one.
    workflow runs `vp run version` (`changeset version`): it consumes the pending
    changesets, bumps the affected `package.json` versions, and writes each
    package's `CHANGELOG.md` on the `changeset-release/trunk` branch, then opens
-   (or updates) a **"chore: version packages"** PR and assigns it to the owner.
+   (or updates) a **"chore: version packages"** PR, assigns it to the owner and
+   starts CI on it. The PR's own `pull_request` run, started by
+   github-actions[bot], stops at "action required" and reports nothing, so the
+   job dispatches `ci.yml` on `changeset-release/trunk`, and that run gives
+   the PR its `ci (node lts)` / `ci (node latest)` checks. To re-run them by
+   hand, run the CI workflow on that branch from the Actions tab.
    This step runs outside the
    `release` environment, so it needs no approval. Review the PR like any
    other.
