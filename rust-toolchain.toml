@@ -1,0 +1,6 @@
+# Every package compiles a Rust crate to wasm32-unknown-unknown. With the target
+# named here, rustup installs it the first time cargo runs in this repository,
+# so a build needs no separate `rustup target add` step, locally or in CI.
+[toolchain]
+channel = "stable"
+targets = ["wasm32-unknown-unknown"]

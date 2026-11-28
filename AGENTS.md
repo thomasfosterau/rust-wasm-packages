@@ -9,13 +9,11 @@ This repository is managed by [Vite+](https://viteplus.dev): a pnpm monorepo of 
 - `vp check` — format (Oxfmt), lint (Oxlint), and type-check (tsgolint); `--fix` to autofix
 - `vp run -r test` — run every package's Vitest suite
 
-**You need a Rust toolchain with the wasm target**, or nothing works:
+- `vp run ci` — all of the above in order (build → check → test with coverage); the one command CI runs
 
-```sh
-rustup target add wasm32-unknown-unknown
-```
+**You need a Rust toolchain (rustup)**, or nothing works. `rust-toolchain.toml` names the `wasm32-unknown-unknown` target, so rustup installs it the first time cargo runs here.
 
-**Build before checking or testing on a clean checkout.** Nothing type-checks until `build:wasm` has emitted `src/wasm.generated.ts` — it is gitignored. Every other task declares `dependsOn: ["build:wasm"]`, and CI orders the steps build → check → test.
+**Build before checking or testing on a clean checkout.** Nothing type-checks until `build:wasm` has emitted `src/wasm.generated.ts` — it is gitignored. Every other task depends on `build:wasm`, and the `ci` task orders the steps build → check → test.
 
 Use `./node_modules/.bin/vp` if the global `vp` CLI is not installed.
 
@@ -39,6 +37,10 @@ These are not style preferences — each one is a platform requirement that loca
 
 Mirror `packages/argon2`: a `Cargo.toml` (with `publish = false` — the crate goes to npm, not crates.io), `src/lib.rs`, `scripts/build-wasm.ts`, a `vite.config.ts` declaring the `build:wasm` → `build`/`test` task chain, and a `package.json` whose `files` ships `dist`, `CHANGELOG.md` and the Rust source. Add it to the CI cargo cache key's path list and to `docs/RELEASING.md`.
 
+## CI
+
+`.github/workflows/ci.yml` is the only CI workflow and runs one command, `vp run ci`, on Node's LTS and current release lines. A new gate belongs in the `ci` task in the root `vite.config.ts` (or in a package task it runs), not in a workflow step, so that local and CI stay the same thing. Each line is its own check — `ci (node lts)` and `ci (node latest)` — and those are the names a ruleset requires; there is no aggregate job.
+
 ## Releasing
 
 Changesets + npm Trusted Publishing (OIDC). Every user-visible change ships with a changeset (`vp run changeset`). See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/RELEASING.md](docs/RELEASING.md).
@@ -48,3 +50,9 @@ The published `dist/` embeds the compiled wasm, so a release built without a Rus
 ## History
 
 `packages/argon2` was extracted from `thomasfosterau/website` with `git subtree split`, so its pre-extraction history is intact.
+
+## Pull requests
+
+- **Write the PR body with the `pr` skill** from Matt Pocock's skills (`mattpocock-skills:pr`), filling in the repository's pull request template where there is one.
+- **Resolve merge conflicts before you hand a PR over.** Rebase onto `origin/trunk` and push; a PR that conflicts with `trunk` isn't finished.
+- **Mark the PR ready for review as soon as the initial draft is finished.** Don't wait for CI to run, for reviews, or for the owner to do it. Keep fixing CI failures and review findings on the ready PR.

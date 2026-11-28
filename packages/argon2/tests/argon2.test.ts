@@ -126,6 +126,17 @@ describe("hash", () => {
     expect(entered).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["null", null],
+    ["a string", "argon2id"],
+    ["a number", 3],
+  ])("rejects options given as %s", (_label, options) => {
+    expect(codeOf(() => hash(PASSWORD, options as unknown as object))).toBe("invalid-parameters");
+    expect(codeOf(() => verify(PASSWORD, REFERENCE[0].hash, options as unknown as object))).toBe(
+      "invalid-parameters",
+    );
+  });
+
   it("rejects a password that is neither a string nor bytes", () => {
     expect(codeOf(() => hash(42 as unknown as string))).toBe("invalid-parameters");
     expect(codeOf(() => verify(42 as unknown as string, REFERENCE[0].hash))).toBe(
@@ -249,6 +260,63 @@ describe("a failed allocation", () => {
       true,
     );
     expect(instantiated).toHaveBeenCalledTimes(1);
+  });
+
+  it("never runs on the trapped instance again, even when it cannot be replaced", () => {
+    const unavailable = new Error("no instance available");
+    const instantiated = vi.spyOn(WebAssembly, "Instance").mockImplementation(function fail() {
+      throw unavailable;
+    });
+
+    // The trap, with its replacement failing: both are reported.
+    try {
+      hash(PASSWORD, unallocatable);
+      expect.unreachable("the allocation should have failed");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Argon2Error);
+      expect((error as Argon2Error).code).toBe("internal");
+      const { cause } = error as Argon2Error;
+      expect(cause).toBeInstanceOf(AggregateError);
+      expect((cause as AggregateError).errors[0]).toBeInstanceOf(WebAssembly.RuntimeError);
+      expect((cause as AggregateError).errors[1]).toBe(unavailable);
+    }
+    expect(instantiated).toHaveBeenCalledTimes(1);
+
+    // While no instance can be created, every call tries again, fails with
+    // `internal`, and computes nothing: valid arguments, no result.
+    for (const attempt of [
+      () => hash(PASSWORD, { ...CHEAP, salt: FIXED_SALT }),
+      () => verify(PASSWORD, REFERENCE[0].hash),
+    ]) {
+      try {
+        attempt();
+        expect.unreachable("there is no instance to run on");
+      } catch (error) {
+        expect(error).toBeInstanceOf(Argon2Error);
+        expect((error as Argon2Error).code).toBe("internal");
+        expect((error as Argon2Error).cause).toBe(unavailable);
+      }
+    }
+    expect(instantiated).toHaveBeenCalledTimes(3);
+
+    // Once an instance can be created again, the next call creates exactly
+    // one — a new one — and works.
+    instantiated.mockRestore();
+    const recovered = vi.spyOn(WebAssembly, "Instance");
+    expect(hash(PASSWORD, REFERENCE[0].options)).toBe(REFERENCE[0].hash);
+    expect(verify(PASSWORD, REFERENCE[0].hash)).toBe(true);
+    expect(recovered).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves verifyPassword and hashPassword failing, not guessing, while there is no instance", async () => {
+    const instantiated = vi.spyOn(WebAssembly, "Instance").mockImplementation(function fail() {
+      throw new Error("no instance available");
+    });
+    expect(codeOf(() => hash(PASSWORD, unallocatable))).toBe("internal");
+    await expect(verifyPassword(PUBLISHED_0_1_1[0])).rejects.toMatchObject({ code: "internal" });
+    await expect(hashPassword(PASSWORD)).rejects.toMatchObject({ code: "internal" });
+    instantiated.mockRestore();
+    expect(await verifyPassword(PUBLISHED_0_1_1[0])).toBe(true);
   });
 
   it("is what an over-large stored hash does to verifyPassword, which has no limits", async () => {
