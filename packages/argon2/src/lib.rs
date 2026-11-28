@@ -28,8 +28,10 @@
 //! entirely; the JS side uses Web Crypto, which is a better entropy source on
 //! this runtime anyway.
 
+use argon2::password_hash::phc::{self, Salt};
+use argon2::password_hash::{self, PasswordHasher, PasswordVerifier};
+use argon2::PasswordHash;
 use argon2::{Algorithm, Argon2, Params, Version};
-use argon2::password_hash::{self, PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
 use core::slice;
 
 /// Reserve `len` bytes of linear memory and hand the caller the pointer.
@@ -83,6 +85,21 @@ fn build(m_cost: u32, t_cost: u32, p_cost: u32) -> Option<Argon2<'static>> {
     Some(Argon2::new(Algorithm::Argon2id, Version::V0x13, params))
 }
 
+/// Trap when argon2 could not reserve its working memory.
+///
+/// argon2 0.6 reports a failed allocation as an error instead of aborting.
+/// Every entry point turns it back into a trap, so a memory cost the runtime
+/// cannot provide fails the same way it always has: the JS side sees a trap,
+/// retires the instance and throws `internal`. The frozen [`verify`] has no
+/// error code for it, and folding it into `-1` would report a wrong password.
+fn trap_if_out_of_memory(error: password_hash::Error) -> password_hash::Error {
+    if error == password_hash::Error::OutOfMemory {
+        // `wasm32-unknown-unknown` lowers an abort to the `unreachable` trap.
+        std::process::abort();
+    }
+    error
+}
+
 /// Hash `password` with `salt` at the given argon2id cost parameters.
 ///
 /// Writes a PHC string (`$argon2id$v=19$m=…,t=…,p=…$<salt>$<hash>`) into
@@ -108,13 +125,15 @@ pub unsafe extern "C" fn hash(
     let Some(argon2) = build(m_cost, t_cost, p_cost) else {
         return -1;
     };
-    // The PHC format carries the salt B64-encoded; `SaltString` enforces the
-    // spec's length bounds, so an out-of-range salt is rejected here rather
-    // than producing an unparseable hash.
-    let Ok(salt) = SaltString::encode_b64(salt_bytes) else {
+    // `Salt` enforces the PHC length bounds, so an out-of-range salt is
+    // rejected here rather than producing an unparseable hash.
+    let Ok(salt) = Salt::new(salt_bytes) else {
         return -1;
     };
-    let Ok(phc) = argon2.hash_password(password, &salt) else {
+    let Ok(phc) = argon2
+        .hash_password_with_salt(password, &salt)
+        .map_err(trap_if_out_of_memory)
+    else {
         return -1;
     };
 
@@ -150,9 +169,12 @@ pub unsafe extern "C" fn verify(
     };
     // Cost parameters come from the stored hash, not from the caller, so a hash
     // written at older parameters keeps verifying after a cost bump.
-    match Argon2::default().verify_password(password, &parsed) {
+    match Argon2::default()
+        .verify_password(password, &parsed)
+        .map_err(trap_if_out_of_memory)
+    {
         Ok(()) => 1,
-        Err(password_hash::Error::Password) => 0,
+        Err(password_hash::Error::PasswordInvalid) => 0,
         Err(_) => -1,
     }
 }
@@ -210,11 +232,14 @@ pub unsafe extern "C" fn hash_with(
     let Ok(params) = Params::new(m_cost, t_cost, p_cost, Some(output_len)) else {
         return ERR_INVALID;
     };
-    let Ok(salt) = SaltString::encode_b64(salt_bytes) else {
+    let Ok(salt) = Salt::new(salt_bytes) else {
         return ERR_UNSUPPORTED;
     };
     let argon2 = Argon2::new(algorithm, Version::V0x13, params);
-    let Ok(phc) = argon2.hash_password(password, &salt) else {
+    let Ok(phc) = argon2
+        .hash_password_with_salt(password, &salt)
+        .map_err(trap_if_out_of_memory)
+    else {
         return ERR_INTERNAL;
     };
 
@@ -253,14 +278,19 @@ pub unsafe extern "C" fn verify_with(
     let Ok(stored) = core::str::from_utf8(stored) else {
         return ERR_INVALID;
     };
-    let Ok(parsed) = PasswordHash::new(stored) else {
-        return ERR_INVALID;
+    let parsed = match PasswordHash::new(stored) {
+        Ok(parsed) => parsed,
+        // A well-formed PHC string whose salt is shorter than argon2 allows:
+        // the parser now refuses it, but it is an unsupported argon2 hash, as
+        // it was when argon2 itself rejected the salt.
+        Err(phc::Error::SaltTooShort) => return ERR_UNSUPPORTED,
+        Err(_) => return ERR_INVALID,
     };
     let (Some(salt), Some(expected)) = (parsed.salt, parsed.hash) else {
         return ERR_INVALID;
     };
 
-    let Ok(algorithm) = Algorithm::try_from(parsed.algorithm) else {
+    let Ok(algorithm) = Algorithm::try_from(parsed.algorithm.as_str()) else {
         return ERR_UNSUPPORTED;
     };
     let version = match parsed.version {
@@ -283,7 +313,10 @@ pub unsafe extern "C" fn verify_with(
     // Hashed and compared here rather than through `verify_password`, which
     // ignores this `Argon2`'s version and reads a versionless hash as 0x13.
     // `Output`'s equality is constant-time.
-    match Argon2::new(algorithm, version, params).hash_password(password, salt) {
+    match Argon2::new(algorithm, version, params)
+        .hash_password_with_salt(password, &salt)
+        .map_err(trap_if_out_of_memory)
+    {
         Ok(computed) => i32::from(computed.hash == Some(expected)),
         Err(password_hash::Error::Crypto) => ERR_INTERNAL,
         // What is left is the algorithm rejecting its input (a salt shorter
