@@ -9,7 +9,9 @@ name: Release
 #   publish-plan`), else `none`.
 # - `version` opens/updates the "Version Packages" PR. It holds a write-scoped
 #   token but no `id-token`, so it cannot publish, and runs outside the
-#   `release` environment, so it needs no approval.
+#   `release` environment, so it needs no approval. It then dispatches CI on
+#   the PR's branch: the PR's own `pull_request` run, started by
+#   github-actions[bot], waits at "action required" and reports no checks.
 # - `publish` is the only job in the protected `release` environment and the
 #   only one with `id-token: write`: it builds the wasm, publishes to npm via
 #   OIDC trusted publishing and tags the release, after the owner approves it
@@ -72,6 +74,7 @@ jobs:
       group: release-version-${{ github.ref }}
       cancel-in-progress: true
     permissions:
+      actions: write # dispatch CI on the version PR's branch
       contents: write # commit the version changes to `changeset-release/trunk`
       pull-requests: write # open/update the "Version Packages" PR
     steps:
@@ -106,6 +109,19 @@ jobs:
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ steps.version.outputs.pr-number }}
         run: gh pr edit "$PR_NUMBER" --add-assignee thomasfosterau
+
+      # The version commit is pushed by github-actions[bot] with GITHUB_TOKEN,
+      # so the PR's own `pull_request` CI run stops at "action required" and
+      # never reports the required `ci (node …)` checks. A `workflow_dispatch`
+      # run, which GITHUB_TOKEN may start, runs straight away and reports on
+      # the PR's head commit like any other.
+      - name: Run CI on the version PR
+        if: steps.version.outputs.pr-number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BRANCH: changeset-release/${{ github.ref_name }}
+        run: gh workflow run ci.yml --ref "$BRANCH"
 
   publish:
     name: Publish to npm
